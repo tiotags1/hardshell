@@ -9,11 +9,12 @@
 #include <sys/mount.h>
 #include <sys/prctl.h>
 
-#include "shell.h"
+#include "hs.h"
+#include "hs_internal.h"
 
-int do_init (sandbox_t * sandbox) {
-  if (sandbox->flags & SANDBOX_DID_INIT) return 0;
-  sandbox->flags |= SANDBOX_DID_INIT;
+static int hs_do_init (hs_shell_t * hs) {
+  if (hs->flags & HS_FLAG_INIT) return 0;
+  hs->flags |= HS_FLAG_INIT;
 
   const char * root = "/tmp/hello1";
   printf ("sandbox path '%s'\n", root);
@@ -22,42 +23,44 @@ int do_init (sandbox_t * sandbox) {
 
   ok (mount, NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL);
 
-  sandbox->root = strdup (root);
-  hin_create_dir_path (AT_FDCWD, sandbox->root, 0700);
+  hs->root = strdup (root);
+  hs_create_dir_path (AT_FDCWD, hs->root, 0700);
 
-  ok (chdir, sandbox->root);
+  ok (chdir, hs->root);
 
   ok (prctl, PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
 
   return 0;
 }
 
-int do_enter (sandbox_t * sandbox) {
-  ok (mount, sandbox->root, "/", NULL, MS_RDONLY|MS_BIND|MS_NOSUID, NULL);
+int hs_do_enter (hs_shell_t * hs) {
+  printf ("entering %s\n", hs->root);
+  ok (mount, hs->root, "/", NULL, MS_BIND|MS_NOSUID, NULL);
   ok (chdir, "/");
+  return 0;
 }
 
-int do_mount (sandbox_t * sandbox, const char * source, const char * target, const char * fs, uint32_t flags, void * data) {
-  do_init (sandbox);
+int hs_do_mount (hs_shell_t * hs, const char * source, const char * target, const char * fs, uint32_t flags, void * data) {
+  hs_do_init (hs);
 
   char * new = NULL;
-  asprintf (&new, "%s/%s", sandbox->root, target);
+  asprintf (&new, "%s/%s", hs->root, target);
 
   printf ("mount %s to %s\n", source, new);
-  hin_create_dir_path (AT_FDCWD, new, 0700);
+  hs_create_dir_path (AT_FDCWD, new, 0700);
   ok (mount, source, new, fs, flags, data);
   free (new);
   return 0;
 }
 
-int do_mkdir (sandbox_t * sandbox, const char * path) {
-  do_init (sandbox);
+int hs_do_mkdir (hs_shell_t * hs, const char * path) {
+  hs_do_init (hs);
 
   char * new = NULL;
-  asprintf (&new, "%s/%s", sandbox->root, path);
+  asprintf (&new, "%s/%s", hs->root, path);
 
   printf ("mkdir %s to %s\n", path, new);
-  hin_create_dir_path (AT_FDCWD, new, 0700);
+  hs_create_dir_path (AT_FDCWD, new, 0700);
   free (new);
   return 0;
 }

@@ -5,29 +5,30 @@
 #include <string.h>
 
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#include "shell.h"
+#include "hs.h"
+#include "hs_internal.h"
 
-#include <signal.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
-
-void handle_sigchld (int sig) {
+static void hs_handle_sigchld (int sig) {
   int saved_errno = errno;
   while (waitpid ((pid_t)(-1), 0, WNOHANG) > 0) {}
   errno = saved_errno;
 }
 
-int register_signals () {
+int hs_register_signals () {
   struct sigaction sa;
-  sa.sa_handler = &handle_sigchld;
+  sa.sa_handler = &hs_handle_sigchld;
   sigemptyset (&sa.sa_mask);
   sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
   ok (sigaction, SIGCHLD, &sa, 0);
 
   ok (prctl, PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0);
+  return 0;
 }
 
 int checkreturn (int res, const char *name, const char * filename, int line) {
@@ -35,9 +36,10 @@ int checkreturn (int res, const char *name, const char * filename, int line) {
     return res;
   fprintf (stderr, "%s:%d %s: %s\n", filename, line, name, strerror (errno));
   exit(-1);
+  return -1;
 }
 
-int hin_create_dir_path (int dirfd, const char * path, mode_t mode) {
+int hs_create_dir_path (int dirfd, const char * path, mode_t mode) {
   int fd = openat (dirfd, path, O_DIRECTORY, mode);
   if (fd >= 0) {
     close (fd);

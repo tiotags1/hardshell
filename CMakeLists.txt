@@ -11,11 +11,14 @@ set (TARGET_LIBS ${TARGET_LIBS})
 
 set (external_src
 external/basic/basic_pattern.c
+external/basic/basic_hashtable.c
 )
 
 set (shell_src
 src/main.c
+src/parse.c
 src/sandbox.c
+src/shell.c
 src/util.c
 )
 

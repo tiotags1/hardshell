@@ -12,4 +12,9 @@ Inspired by firejail (for the easy configuration options), bubblewrap (for not h
 
 pretty config file, check it out!
 
+build & run
+-----------
+
+`mkdir -p build && cd build && cmake .. && make && cd ../work && ../build/hardshell test.sh`
+
 
