@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "hs.h"
 #include "hs_internal.h"
 
@@ -128,4 +131,51 @@ int hs_shell_expansion (hs_shell_t * hs, string_t * source, string_t * out) {
   return out->len;
 }
 
+static char ** hs_create_env (hs_shell_t * hs) {
+  basic_ht_t * ht = hs->env;
+  basic_ht_iterator_t iter;
+  basic_ht_pair_t * pair;
+  int num = 1;
+  memset (&iter, 0, sizeof iter);
+  while ((pair = basic_ht_iterate_pair (ht, &iter)) != NULL) {
+    //printf ("created env with %s = %s\n", pair->value1, pair->value2);
+    num++;
+  }
+  char ** new = malloc (num * sizeof (char*));
+  memset (&iter, 0, sizeof iter);
+  int i = 0;
+  while ((pair = basic_ht_iterate_pair (ht, &iter)) != NULL) {
+    asprintf (&new[i++], "%s=%s", (char*)pair->value1, (char*)pair->value2);
+  }
+  new[num-1] = NULL;
+  return new;
+}
+
+int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
+  if (hs->debug)
+    printf ("exec '%s' params '%.*s'\n", path, (int)source->len, source->ptr);
+
+  int pid = ok (fork);
+  if (pid > 0) {
+    waitpid (pid, NULL, 0);
+    return 0;
+  }
+
+  char ** argv1 = calloc (1, sizeof (void*) * 2);
+  argv1[0] = (char*)path;
+
+  int nparam = 1;
+  while ((argv1[nparam] = hs_parse_param (hs, source))) {
+    nparam++;
+    argv1 = realloc (argv1, sizeof (void*) * (nparam+1));
+  }
+  argv1[nparam] = NULL;
+
+  char ** envp1 = hs_create_env (hs);
+
+  hs_do_enter (hs);
+
+  ok (execvpe, argv1[0], argv1, envp1);
+  return -1;
+}
 

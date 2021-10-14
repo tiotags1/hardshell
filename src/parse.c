@@ -10,22 +10,31 @@
 #include "hs.h"
 #include "hs_internal.h"
 
-static char * hs_parse_param (hs_shell_t * hs, string_t * source) {
+char * hs_parse_param (hs_shell_t * hs, string_t * source) {
   match_string (source, "[ ]*");
+  int quotes = 0;
   const char * ptr = source->ptr;
   const char * max = source->ptr + source->len;
+  if (*ptr == '"') {
+    quotes = 1;
+    ptr++;
+  }
   while (1) {
     if (ptr >= max) break;
-    if (*ptr == ' ') break;
+    if (quotes) {
+      if (*ptr == '"') { ptr++; break; }
+    } else {
+      if (*ptr == ' ') break;
+    }
     if (*ptr == '\n') break;
     ptr++;
   }
   int len = ptr-source->ptr;
   if (len <= 0) return NULL;
-  char * new = strndup (source->ptr, len);
+  char * new = strndup (source->ptr + quotes, len - quotes * 2);
   source->ptr += len;
   source->len -= len;
-  match_string (source, "[ ]");
+  match_string (source, "[ ]*");
   return new;
 }
 
@@ -111,18 +120,15 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (path);
     }
 
-  } else if ((used = match_string (source, "shell")) > 0) {
-    char * argv1[] = {"/bin/sh", NULL};
-    int pid = ok (fork);
-    if (pid == 0) {
-      hs_do_enter (hs);
-      ok (execv, argv1[0], argv1);
-    }
-    waitpid (pid, NULL, 0);
-
   } else if ((used = match_string (source, "q")) > 0) {
     //ok (exit, 0);
     exit (0);
+
+  } else if ((used = match_string (source, "(["HS_VARNAME_PATTERN"/]+)", &param1)) > 0) {
+    char * path = strndup (param1.ptr, param1.len);
+    int hs_exec (hs_shell_t * hs, const char * path, string_t * source);
+    hs_exec (hs, path, source);
+    free (path);
   }
   match_string (source, "[ \n]*");
 

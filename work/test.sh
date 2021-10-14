@@ -9,4 +9,6 @@ tmpfs /var /tmp /run
 mkdir /home/$USER
 mkdir /run/user/$UID
 
-shell
+/bin/sh
+
+

@@ -7,6 +7,8 @@
 #include <basic_pattern.h>
 #include <basic_hashtable.h>
 
+char * hs_parse_param (hs_shell_t * hs, string_t * source);
+
 int hs_var_set (hs_shell_t * shell, uint32_t flags, const char * name, int name_len, const char * val, int val_len);
 const char * hs_var_get (hs_shell_t * hs, uint32_t flags, const char * name, int name_len);
 

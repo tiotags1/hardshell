@@ -1,4 +1,10 @@
 
+* finally added ability to execute arbritrary processes
+* pass command line arguments to subprocesses
+* pass environment variables to subprocesses
+* added quoted strings so you can add spaces inside strings (doesn't parse escape characters yet)
+
+commit 17c38c09cc54400d6067edef0945c9791403c5f0
 * added ability to use variables like in shell scripts
 * set proper naming convention for internal functions
 * optimized read buffer reallocation
