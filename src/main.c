@@ -12,6 +12,7 @@
 int main (int argc, const char * argv[], const char * envp[]) {
   hs_shell_t * hs = calloc (1, sizeof (*hs));
   //hs->debug = 0xffffffff;
+  hs_do_init (hs);
 
   int hs_var_init (hs_shell_t * hs, const char * envp[]);
   hs_var_init (hs, envp);

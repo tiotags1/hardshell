@@ -8,7 +8,7 @@ Doesn't use any external dependencies besides libc and a linux kernel.
 
 Doesn't require root/SUID.
 
-Inspired by firejail (for the easy configuration options), bubblewrap (for not having configuration options), mkbox (for the ok function).
+Inspired by firejail (for the easy configuration options), bubblewrap (for not having configuration options), mkbox (for the ok function and basic sandbox setup).
 
 pretty config file, check it out!
 

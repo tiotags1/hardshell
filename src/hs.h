@@ -16,10 +16,16 @@ HS_VAR_ENV = 0x1,
 
 typedef struct {
   const char * root;
+  char * workdir;
   uint32_t flags;
+  uint32_t unshare_flags;
+  int old_uid, old_gid;
+  int new_uid, new_gid;
   void * env, * var;
   uint32_t debug;
 } hs_shell_t;
+
+int hs_do_init (hs_shell_t * hs);
 
 int hs_do_enter (hs_shell_t * hs);
 int hs_do_mount (hs_shell_t * hs, const char * source, const char * target, const char * fs, uint32_t flags, void * data);

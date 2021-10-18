@@ -1,4 +1,14 @@
 
+* finally entered chroot/sandbox area
+* root is mounted as read only
+* share/unshare command to set what namespaces to unshare
+* newid command to set exit uid/gid
+* setroot command to set sandbox location
+* sysfs command to mount sysfs
+* mount command to mount arbitrary folders
+* cd command that sets current working dir after sandbox
+
+commit 4848a96c8a28440e17c57c38924aba2174a361a2
 * finally added ability to execute arbritrary processes
 * pass command line arguments to subprocesses
 * pass environment variables to subprocesses

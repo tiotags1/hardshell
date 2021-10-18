@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sched.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
 #include <unistd.h>
@@ -11,6 +12,7 @@
 #include "hs_internal.h"
 
 char * hs_parse_param (hs_shell_t * hs, string_t * source) {
+  if (source->len <= 0) return NULL;
   match_string (source, "[ ]*");
   int quotes = 0;
   const char * ptr = source->ptr;
@@ -54,6 +56,27 @@ static int hs_parse_comment (hs_shell_t * hs, string_t * source) {
   return len;
 }
 
+static int hs_parse_share_tag (const char * path) {
+  if (strcmp (path, "net") == 0) {
+    return CLONE_NEWNET;
+  } else if (strcmp (path, "ipc") == 0) {
+    return CLONE_NEWIPC;
+  } else if (strcmp (path, "pid") == 0) {
+    return CLONE_NEWPID;
+  } else if (strcmp (path, "uts") == 0) {
+    return CLONE_NEWUTS;
+  //} else if (strcmp (path, "time") == 0) {
+  //  hs->unshare_flags |= CLONE_NEWTIME;
+  } else if (strcmp (path, "sysvsem") == 0) {
+    return CLONE_SYSVSEM;
+  } else if (strcmp (path, "cgroup") == 0) {
+    return CLONE_NEWCGROUP;
+  } else {
+    printf ("unknown unshare flag '%s'\n", path);
+    exit (1);
+  }
+}
+
 int hs_parse (hs_shell_t * hs, string_t * source) {
   string_t orig = *source, param1;
   match_string (source, "[ ]+");
@@ -91,6 +114,20 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (path);
     }
 
+  } else if ((used = match_string (source, "mount ")) > 0) {
+    char * src = hs_parse_param (hs, source);
+    char * trg = hs_parse_param (hs, source);
+    if (src && trg) {
+      hs_do_mount (hs, src, trg, NULL, MS_BIND|MS_NOSUID, NULL);
+    }
+    if (src) free (src);
+    if (trg) free (trg);
+
+  } else if (match_string (source, "cd ") > 0) {
+    if ((path = hs_parse_param (hs, source))) {
+      hs->workdir = path;
+    }
+
   } else if ((used = match_string (source, "mkdir ")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs_do_mkdir (hs, path);
@@ -111,6 +148,27 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (path);
     }
 
+  } else if ((used = match_string (source, "sysfs ")) > 0) {
+    char * path = hs_parse_param (hs, source);
+    if (path) {
+      hs_do_mount (hs, "/sys", path, NULL, MS_BIND|MS_REC, NULL);
+      free (path);
+    }
+
+  } else if ((used = match_string (source, "newid ")) > 0) {
+    char * path = hs_parse_param (hs, source);
+    if (path) {
+      hs->new_uid = atoi (path);
+      hs->new_gid = hs->new_uid;
+      free (path);
+    }
+
+  } else if ((used = match_string (source, "setroot ")) > 0) {
+    char * path = hs_parse_param (hs, source);
+    if (path) {
+      hs->root = path;
+    }
+
   } else if ((used = match_string (source, "tmpfs ")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       char * options = NULL;
@@ -123,6 +181,18 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
   } else if ((used = match_string (source, "q")) > 0) {
     //ok (exit, 0);
     exit (0);
+
+  } else if ((used = match_string (source, "unshare ")) > 0) {
+    while ((path = hs_parse_param (hs, source))) {
+      hs->unshare_flags |= hs_parse_share_tag (path);
+      free (path);
+    }
+
+  } else if ((used = match_string (source, "share ")) > 0) {
+    while ((path = hs_parse_param (hs, source))) {
+      hs->unshare_flags &= ~hs_parse_share_tag (path);
+      free (path);
+    }
 
   } else if ((used = match_string (source, "(["HS_VARNAME_PATTERN"/]+)", &param1)) > 0) {
     char * path = strndup (param1.ptr, param1.len);
