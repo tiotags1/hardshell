@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#define HS_PROG_NAME "shell"
 #define HS_VARNAME_PATTERN "%w_-"
 
 enum {

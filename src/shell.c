@@ -1,4 +1,5 @@
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -157,7 +158,16 @@ int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
 
   int pid = ok (fork);
   if (pid > 0) {
-    waitpid (pid, NULL, 0);
+    int status = 0;
+    waitpid (pid, &status, 0);
+    if (WIFSIGNALED (status)) {
+      if (WTERMSIG (status) == SIGSEGV) {
+        // It was terminated by a segfault
+        printf ("Segmentation fault\n");
+      } else {
+        printf ("child %d terminated due to another signal\n", pid);
+      }
+    }
     return 0;
   }
 
@@ -175,7 +185,9 @@ int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
 
   hs_do_enter (hs);
 
-  ok (execvpe, argv1[0], argv1, envp1);
+  int err = execvpe (argv1[0], argv1, envp1);
+  fprintf (stderr, HS_PROG_NAME " can't run '%s': %s\n", argv1[0], strerror (errno));
+  exit (err);
   return -1;
 }
 

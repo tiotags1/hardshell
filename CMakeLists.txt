@@ -7,7 +7,7 @@ add_definitions (-D_GNU_SOURCE -D_LARGEFILE_SOURCE -O2 -Wall -Werror=vla)
 
 include_directories ("src" "external/basic/")
 
-set (TARGET_LIBS ${TARGET_LIBS})
+set (TARGET_LIBS ${TARGET_LIBS} cap)
 
 set (external_src
 external/basic/basic_pattern.c

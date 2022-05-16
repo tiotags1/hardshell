@@ -58,6 +58,7 @@ int main (int argc, const char * argv[], const char * envp[]) {
       memmove (data, source.ptr, count-used);
       count -= used;
     }
+    if (used < 0) break;
   }
 
   return 0;

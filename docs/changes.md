@@ -1,4 +1,11 @@
 
+* fixed not exiting due to infinite loop when loading commands from file
+* better error message when execve fails
+* mount run folder helpers
+* added CAP\_MODE\_NOPRIV
+* added a firefox profile
+
+commit 28839149ae3a11693c27d85ecef36ceac9c0beeb
 * finally entered chroot/sandbox area
 * root is mounted as read only
 * share/unshare command to set what namespaces to unshare

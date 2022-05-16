@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sched.h>
 #include <unistd.h>
+#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -17,6 +18,16 @@
 int pivot_root(const char *new_root, const char *put_old);
 
 int hs_do_init (hs_shell_t * hs) {
+  /*
+  // disallow gdb, strace and others from attaching via PTRACE_ATTACH
+  if (0 > prctl(PR_SET_DUMPABLE, 0)) {
+    perror("can't prctl(PR_SET_DUMPABLE)");
+    return 1;
+  }
+  // if yama enabled then
+  prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, ...)
+  */
+
   hs->unshare_flags = CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID;
   hs->new_uid = hs->new_gid = 1000;
   hs->workdir = strdup ("/");
@@ -102,6 +113,8 @@ int hs_do_enter (hs_shell_t * hs) {
 
   ok (mount, "/", "/", NULL, MS_RDONLY|MS_BIND|MS_NOSUID|MS_REMOUNT, NULL);
 
+  ok (cap_set_mode, CAP_MODE_NOPRIV);
+
   ok (chdir, hs->workdir);
 
   return 0;
@@ -111,7 +124,9 @@ int hs_do_mount (hs_shell_t * hs, const char * source, const char * target, cons
   hs_do_start (hs);
 
   char * new = NULL;
-  asprintf (&new, "%s/%s", hs->root, target);
+  char * ntarget = target;
+  if (*ntarget == '/') ntarget++;
+  asprintf (&new, "%s/%s", hs->root, ntarget);
 
   printf ("mount %s to %s\n", source, new);
   hs_create_dir_path (AT_FDCWD, source, 0700);

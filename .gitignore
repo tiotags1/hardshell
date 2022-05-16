@@ -19,4 +19,6 @@ perf.data*
 *.c1
 *.h1
 
+/work/new
+
 /mark.lua

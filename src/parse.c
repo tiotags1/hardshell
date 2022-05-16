@@ -77,6 +77,17 @@ static int hs_parse_share_tag (const char * path) {
   }
 }
 
+#include <stdarg.h>
+
+char * hs_asprintf (const char * fmt, ...) {
+  va_list ap;
+  va_start (ap, fmt);
+  char * new = NULL;
+  int ret = vasprintf (&new, fmt, ap);
+  va_end (ap);
+  return new;
+}
+
 int hs_parse (hs_shell_t * hs, string_t * source) {
   string_t orig = *source, param1;
   match_string (source, "[ ]+");
@@ -112,6 +123,28 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
     while ((path = hs_parse_param (hs, source))) {
       hs_do_mount (hs, path, path, NULL, MS_BIND|MS_NOSUID, NULL);
       free (path);
+    }
+
+  } else if ((used = match_string (source, "mount_run ")) > 0) {
+    while ((path = hs_parse_param (hs, source))) {
+      char * path1 = path;
+      if (*path1 == '/') path1++;
+      char * new1 = hs_asprintf ("/run/%s", path1);
+      hs_do_mount (hs, new1, new1, NULL, MS_BIND|MS_NOSUID, NULL);
+      free (path);
+      free (new1);
+    }
+
+  } else if ((used = match_string (source, "mount_user_run ")) > 0) {
+    while ((path = hs_parse_param (hs, source))) {
+      char * path1 = path;
+      if (*path1 == '/') path1++;
+      char * new1 = hs_asprintf ("/run/user/%d/%s", hs->old_uid, path1);
+      char * new2 = hs_asprintf ("/run/user/%d/%s", hs->new_uid, path1);
+      hs_do_mount (hs, new1, new2, NULL, MS_BIND|MS_NOSUID, NULL);
+      free (path);
+      free (new1);
+      free (new2);
     }
 
   } else if ((used = match_string (source, "mount ")) > 0) {
