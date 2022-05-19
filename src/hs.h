@@ -9,6 +9,9 @@
 
 enum {
 HS_FLAG_INIT = 0x1,
+HS_FLAG_SANDBOX = 0x2,
+HS_FLAG_DONT_WAIT = 0x4,
+HS_FLAG_APPEND = 0x8,
 };
 
 enum {
@@ -20,6 +23,7 @@ typedef struct {
   char * workdir;
   uint32_t flags;
   uint32_t unshare_flags;
+  int out_fd, err_fd;
   int old_uid, old_gid;
   int new_uid, new_gid;
   void * env, * var;

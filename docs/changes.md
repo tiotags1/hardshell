@@ -1,4 +1,10 @@
 
+* redirect to file: '>' construct
+* parallel starting: '&' construct
+* added exit command
+* fixed some errors
+
+commit 4c32a58d4aadd57150a36e88c53ad4bf1c1baf77
 * fixed not exiting due to infinite loop when loading commands from file
 * better error message when execve fails
 * mount run folder helpers

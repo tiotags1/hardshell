@@ -152,12 +152,22 @@ static char ** hs_create_env (hs_shell_t * hs) {
   return new;
 }
 
+int hs_clear (hs_shell_t * hs) {
+  hs->out_fd = 0;
+  hs->flags = 0;
+  hs->flags &= ~HS_FLAG_DONT_WAIT;
+}
+
 int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
   if (hs->debug)
     printf ("exec '%s' params '%.*s'\n", path, (int)source->len, source->ptr);
 
   int pid = ok (fork);
   if (pid > 0) {
+    if (hs->flags & HS_FLAG_DONT_WAIT) {
+      hs_clear (hs);
+      return 0;
+    }
     int status = 0;
     waitpid (pid, &status, 0);
     if (WIFSIGNALED (status)) {
@@ -168,7 +178,10 @@ int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
         printf ("child %d terminated due to another signal\n", pid);
       }
     }
+    hs_clear (hs);
     return 0;
+  } else if (pid < 0) {
+    fprintf (stderr, "can't fork %s\n", strerror (errno));
   }
 
   char ** argv1 = calloc (1, sizeof (void*) * 2);
@@ -176,6 +189,8 @@ int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
 
   int nparam = 1;
   while ((argv1[nparam] = hs_parse_param (hs, source))) {
+    //if (hs->debug)
+    //  printf ("param %d '%s'\n", nparam, argv1[nparam]);
     nparam++;
     argv1 = realloc (argv1, sizeof (void*) * (nparam+1));
   }
@@ -184,6 +199,11 @@ int hs_exec (hs_shell_t * hs, const char * path, string_t * source) {
   char ** envp1 = hs_create_env (hs);
 
   hs_do_enter (hs);
+
+  if (hs->out_fd) {
+    ok (close, STDOUT_FILENO);
+    ok (dup2, hs->out_fd, STDOUT_FILENO);
+  }
 
   int err = execvpe (argv1[0], argv1, envp1);
   fprintf (stderr, HS_PROG_NAME " can't run '%s': %s\n", argv1[0], strerror (errno));

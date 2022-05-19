@@ -20,5 +20,6 @@ perf.data*
 *.h1
 
 /work/new
+/work/*.test.sh
 
 /mark.lua

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <fcntl.h>
 #include <sched.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
@@ -113,19 +114,19 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       printf ("var '%.*s' = '%.*s'\n", (int)param1.len, param1.ptr, (int)out.len, out.ptr);
     free ((void*)out.ptr);
 
-  } else if ((used = match_string (source, "ro ")) > 0) {
+  } else if ((used = match_string (source, "ro%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs_do_mount (hs, path, path, NULL, MS_BIND|MS_NOSUID|MS_RDONLY, NULL);
       free (path);
     }
 
-  } else if ((used = match_string (source, "rw ")) > 0) {
+  } else if ((used = match_string (source, "rw%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs_do_mount (hs, path, path, NULL, MS_BIND|MS_NOSUID, NULL);
       free (path);
     }
 
-  } else if ((used = match_string (source, "mount_run ")) > 0) {
+  } else if ((used = match_string (source, "mount_run%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       char * path1 = path;
       if (*path1 == '/') path1++;
@@ -135,7 +136,7 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (new1);
     }
 
-  } else if ((used = match_string (source, "mount_user_run ")) > 0) {
+  } else if ((used = match_string (source, "mount_user_run%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       char * path1 = path;
       if (*path1 == '/') path1++;
@@ -147,7 +148,7 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (new2);
     }
 
-  } else if ((used = match_string (source, "mount ")) > 0) {
+  } else if ((used = match_string (source, "mount%s+")) > 0) {
     char * src = hs_parse_param (hs, source);
     char * trg = hs_parse_param (hs, source);
     if (src && trg) {
@@ -156,39 +157,39 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
     if (src) free (src);
     if (trg) free (trg);
 
-  } else if (match_string (source, "cd ") > 0) {
+  } else if (match_string (source, "cd%s+") > 0) {
     if ((path = hs_parse_param (hs, source))) {
       hs->workdir = path;
     }
 
-  } else if ((used = match_string (source, "mkdir ")) > 0) {
+  } else if ((used = match_string (source, "mkdir%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs_do_mkdir (hs, path);
       free (path);
     }
 
-  } else if ((used = match_string (source, "devfs ")) > 0) {
+  } else if ((used = match_string (source, "devfs%s+")) > 0) {
     char * path = hs_parse_param (hs, source);
     if (path) {
       hs_do_mount (hs, "/dev", path, NULL, MS_BIND|MS_REC, NULL);
       free (path);
     }
 
-  } else if ((used = match_string (source, "procfs ")) > 0) {
+  } else if ((used = match_string (source, "procfs%s+")) > 0) {
     char * path = hs_parse_param (hs, source);
     if (path) {
       hs_do_mount (hs, "/proc", path, NULL, MS_BIND|MS_REC, NULL);
       free (path);
     }
 
-  } else if ((used = match_string (source, "sysfs ")) > 0) {
+  } else if ((used = match_string (source, "sysfs%s+")) > 0) {
     char * path = hs_parse_param (hs, source);
     if (path) {
       hs_do_mount (hs, "/sys", path, NULL, MS_BIND|MS_REC, NULL);
       free (path);
     }
 
-  } else if ((used = match_string (source, "newid ")) > 0) {
+  } else if ((used = match_string (source, "newid%s+")) > 0) {
     char * path = hs_parse_param (hs, source);
     if (path) {
       hs->new_uid = atoi (path);
@@ -196,13 +197,13 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (path);
     }
 
-  } else if ((used = match_string (source, "setroot ")) > 0) {
+  } else if ((used = match_string (source, "setroot%s+")) > 0) {
     char * path = hs_parse_param (hs, source);
     if (path) {
       hs->root = path;
     }
 
-  } else if ((used = match_string (source, "tmpfs ")) > 0) {
+  } else if ((used = match_string (source, "tmpfs%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       char * options = NULL;
       asprintf (&options, "size=%s,nr_inodes=16,mode=755", "1M");
@@ -211,21 +212,23 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
       free (path);
     }
 
-  } else if ((used = match_string (source, "q")) > 0) {
-    //ok (exit, 0);
-    exit (0);
-
-  } else if ((used = match_string (source, "unshare ")) > 0) {
+  } else if ((used = match_string (source, "unshare%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs->unshare_flags |= hs_parse_share_tag (path);
       free (path);
     }
 
-  } else if ((used = match_string (source, "share ")) > 0) {
+  } else if ((used = match_string (source, "share%s+")) > 0) {
     while ((path = hs_parse_param (hs, source))) {
       hs->unshare_flags &= ~hs_parse_share_tag (path);
       free (path);
     }
+
+  } else if ((used = match_string_equal (source, "exit%s*")) > 0) {
+    exit (0);
+
+  } else if ((used = match_string_equal (source, "q%s*")) > 0) {
+    exit (0);
 
   } else if ((used = match_string (source, "(["HS_VARNAME_PATTERN"/]+)", &param1)) > 0) {
     char * path = strndup (param1.ptr, param1.len);
@@ -241,6 +244,7 @@ int hs_parse (hs_shell_t * hs, string_t * source) {
 int hs_tokenize (hs_shell_t * hs, string_t * source, string_t * command, uint32_t flags) {
   const char * ptr = source->ptr;
   const char * max = ptr + source->len;
+  const char * cmd = NULL;
   int skip = 0;
   for (;ptr < max; ptr++) {
     switch (*ptr) {
@@ -250,8 +254,41 @@ int hs_tokenize (hs_shell_t * hs, string_t * source, string_t * command, uint32_
     case ';':
     case '\n':
       skip = 1;
+      cmd = ptr;
       goto done;
     break;
+    case '&':
+      hs->flags |= HS_FLAG_DONT_WAIT;
+      skip = 1;
+      cmd = ptr-1;
+      goto done;
+    break;
+    case '>': {
+      if (*(ptr+1) == '>') {
+        ptr++;
+        hs->flags |= HS_FLAG_APPEND;
+      }
+      cmd = ptr-1;
+      string_t new, param;
+      new.ptr = ptr+1;
+      new.len = max - new.ptr;
+      int n = match_string (&new, "%s*([%w/]+)%s*", &param);
+      if (n < 0) {
+        printf ("syntax error\n");
+      }
+      if (hs->debug)
+        printf ("redirect to '%.*s'\n", param.len, param.ptr);
+      char * path = strndup (param.ptr, param.len);
+      int flags = O_CLOEXEC | O_CREAT | O_WRONLY;
+      if (hs->flags & HS_FLAG_APPEND) {
+        flags |= O_APPEND;
+      } else {
+        flags |= O_TRUNC;
+      }
+      hs->out_fd = ok (open, path, flags, 0777);
+      ptr = new.ptr;
+      goto done;
+    break; }
     default:
       continue;
     }
@@ -260,13 +297,15 @@ done:
   int num = (ptr - source->ptr);
   int used = num + skip;
   command->ptr = source->ptr;
-  command->len = num;
+  command->len = (cmd - source->ptr);
   source->ptr += used;
   source->len -= used;
   used += match_string (source, "%s*");
   string_t out;
   hs_shell_expansion (hs, command, &out);
   *command = out;
+  //if (hs->debug)
+  //  printf ("command was '%.*s'\n", command->len, command->ptr);
   return used;
 }
 

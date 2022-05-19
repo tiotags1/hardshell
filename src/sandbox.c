@@ -47,7 +47,6 @@ static int hs_do_start (hs_shell_t * hs) {
   if (hs->root == NULL) {
     hs->root = strdup ("/tmp/hello1");
   }
-  printf ("sandbox path '%s'\n", hs->root);
   hs_create_dir_path (AT_FDCWD, hs->root, 0700);
 
   ok (mount, hs->root, hs->root, NULL, MS_BIND|MS_NOSUID, NULL);
@@ -69,6 +68,11 @@ static int hs_do_start (hs_shell_t * hs) {
 }
 
 int hs_do_enter (hs_shell_t * hs) {
+  if ((hs->flags & HS_FLAG_SANDBOX) == 0) {
+    return 0;
+  }
+  hs->flags &= ~HS_FLAG_SANDBOX;
+
   printf ("entering %s\n", hs->root);
 
   int newuid = hs->new_uid;
@@ -122,6 +126,7 @@ int hs_do_enter (hs_shell_t * hs) {
 
 int hs_do_mount (hs_shell_t * hs, const char * source, const char * target, const char * fs, uint32_t flags, void * data) {
   hs_do_start (hs);
+  hs->flags |= HS_FLAG_SANDBOX;
 
   char * new = NULL;
   char * ntarget = target;
